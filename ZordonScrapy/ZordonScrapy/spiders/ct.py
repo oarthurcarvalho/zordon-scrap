@@ -4,8 +4,9 @@ from datetime import datetime
 
 import scrapy
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 
 DIA_COLETA = datetime.now().strftime('Dia %d/%m')
 DATA_COLETA = datetime.now().strftime('%d/%m/%Y')
@@ -30,7 +31,9 @@ class CtSpider(scrapy.Spider):
         if maior_data_arquivo == DATA_COLETA:
             return None
 
-        driver = webdriver.Chrome(ChromeDriverManager().install())
+        service = Service()
+        chrome_options = Options()
+        driver = webdriver.Chrome(options=chrome_options, service=service)
         driver.get('https://chartable.com/charts/spotify/brazil-top-podcasts/')
 
         top_podcasts = driver.find_elements(By.CSS_SELECTOR, 'tr')

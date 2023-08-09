@@ -8,13 +8,11 @@ from selenium.common.exceptions import (ElementClickInterceptedException,
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.action_chains import ActionChains
-from webdriver_manager.chrome import ChromeDriverManager
 
-service = Service(ChromeDriverManager().install())
-
-chrome_options = Options()
 chrome_options = webdriver.ChromeOptions()
 
+service = Service()
+chrome_options = Options()
 driver = webdriver.Chrome(options=chrome_options, service=service)
 driver.maximize_window()
 
@@ -26,8 +24,7 @@ while True:
     except ValueError:
         print('Digite apenas o número da semana')
 
-url = 'https://www.gov.br/ancine/pt-br/oca/\
-    resultados-cinema-brasileiro/painel-de-ranking-de-filmes'
+url = 'https://www.gov.br/ancine/pt-br/oca/resultados-cinema-brasileiro/painel-de-ranking-de-filmes'
 
 
 def abaixar_rolagem(xpath, movepx):

@@ -84,7 +84,7 @@ class AmzEbSpider(scrapy.Spider):
             ])
 
     def init_page(self, url):
-        service = Service(ChromeDriverManager().install())
+        service = Service()
         chrome_options = Options()
         chrome_options = webdriver.ChromeOptions()
         my_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \

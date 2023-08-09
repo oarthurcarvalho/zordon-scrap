@@ -1,5 +1,6 @@
 import csv
 import os
+import re
 from time import sleep
 
 from selenium import webdriver
@@ -11,8 +12,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
-
 from utils import abaixar_rolagem, select_filter
 
 
@@ -52,14 +51,71 @@ def verificar_mais_filmes(driver, num_movies, num_last_movie):
         (cond2 < num_movies) else False
 
 
+def get_data(card, dash='publico'):
+
+    info = card.get_attribute('aria-label')
+
+    # Extrair nome do filme
+    padrao_filme = r"^(.*?)\. Público"
+    correspondencias_filme = re.findall(padrao_filme, info)
+    if correspondencias_filme:
+        titulo = correspondencias_filme[0]
+    else:
+        titulo = ''
+
+    # Extrair valor de rank_position
+    padrao_rank_position = r"(\d+) of \d+"
+    correspondencias_rank_position = re.findall(padrao_rank_position, info)
+    if correspondencias_rank_position:
+        rank_position = int(correspondencias_rank_position[0])
+    else:
+        rank_position = ''
+
+    if dash == 'publico':
+
+        # Extrair valor do público
+        padrao_publico = r"Público (\d+.\d+)"
+        correspondencias_publico = re.findall(padrao_publico, info)
+        if correspondencias_publico:
+            publico = correspondencias_publico[0].replace(",", ".")
+            publico = float(publico)
+        else:
+            publico = ''
+
+        # Extrair valor das sessões
+        padrao_sessoes = r"Sessões (\d+)"
+        correspondencias_sessoes = re.findall(padrao_sessoes, info)
+        if correspondencias_sessoes:
+            sessoes = int(correspondencias_sessoes[0])
+        else:
+            sessoes = ''
+
+        return rank_position, titulo, publico, sessoes, info
+
+    padrao_renda = r"Renda R\$(.*?)\."
+    correspondencias_renda = re.findall(padrao_renda, info)
+    if correspondencias_renda:
+        renda = correspondencias_renda[0].replace(".", "")
+        renda = float(renda)
+    else:
+        renda = ''
+
+    padrao_preco_medio = r"Preço Médio do Ingresso R\$(.*?)\."
+    correspondencias_preco_medio = re.findall(padrao_preco_medio, info)
+    if correspondencias_preco_medio:
+        preco_medio = correspondencias_preco_medio[0].replace(",", ".")
+        preco_medio = float(preco_medio)
+
+    return rank_position, titulo, renda, preco_medio, info
+
+
 def scraper_regiao(region_filter, semana_select):
 
-    service = Service(ChromeDriverManager().install())
-
-    chrome_options = Options()
     chrome_options = webdriver.ChromeOptions()
     # chrome_options.add_argument('--headless')
 
+    service = Service()
+    chrome_options = Options()
     driver = webdriver.Chrome(options=chrome_options, service=service)
     driver.maximize_window()
 
@@ -118,6 +174,9 @@ def scraper_regiao(region_filter, semana_select):
                     card_filmes_exibidos = driver.find_elements(
                         'tag name', 'tspan')
 
+                    wait.until(EC.visibility_of_all_elements_located(
+                        (By.CSS_SELECTOR, 'transform.bringToFront')))
+
                     num_movies = int(
                         card_filmes_exibidos[1].text) if card_filmes_exibidos[1].text != '(Blank)' else 0
                     num_last_movie = 0
@@ -132,12 +191,9 @@ def scraper_regiao(region_filter, semana_select):
                             num_new_cards = 0
 
                         for card in cards_filmes[num_new_cards * -1:]:
-                            info = card.get_attribute('aria-label').split('. ')
-                            rank_position = info[-1].split()[0]
-                            titulo = info[0]
-                            publico = info[1].split(
-                            )[-1].rstrip('.0').replace(',', '')
-                            sessoes = info[2].split()[-1].replace(',', '')
+                            rank_position, titulo, \
+                                publico, sessoes, info = get_data(
+                                    card, 'publico')
 
                             cod_film = name_semana + titulo + uf
 
@@ -146,8 +202,11 @@ def scraper_regiao(region_filter, semana_select):
                             print(num_semana, name_semana, rank_position,
                                   titulo, publico, sessoes, filter, region, uf)
 
+                        wait.until(EC.visibility_of_all_elements_located(
+                            (By.CSS_SELECTOR, 'transform.bringToFront')))
+
                         num_last_movie = int(
-                            info[-1].split()[0]) if num_movies != 0 else 0
+                            info.split('. ')[-1].split()[0]) if num_movies != 0 else 0
 
                         if num_movies == num_last_movie:
                             break
@@ -212,6 +271,9 @@ def scraper_regiao(region_filter, semana_select):
                     card_filmes_exibidos = driver.find_elements(
                         'tag name', 'tspan')
 
+                    wait.until(EC.visibility_of_all_elements_located(
+                        (By.CSS_SELECTOR, 'transform.bringToFront')))
+
                     num_movies = int(
                         card_filmes_exibidos[1].text) if card_filmes_exibidos[1].text != '(Blank)' else 0
                     num_last_movie = 0
@@ -226,14 +288,17 @@ def scraper_regiao(region_filter, semana_select):
                             num_new_cards = 0
 
                         for card in cards_filmes[num_new_cards * -1:]:
-                            info = card.get_attribute('aria-label').split('. ')
-                            rank_position = info[-1].split()[0]
-                            titulo = card.find_element(
-                                'xpath', './/div[@class="title"]').text
-                            preco_medio = card.find_elements(
-                                'xpath', './/div[@class="caption"]')[1].text.rstrip('.0').replace(',', '')
-                            renda = card.find_elements(
-                                'xpath', './/div[@class="caption"]')[0].text.replace(',', '')
+                            rank_position, titulo, \
+                                renda, preco_medio, info = get_data(
+                                    card, 'publico')
+                            # info = card.get_attribute('aria-label').split('. ')
+                            # rank_position = info[-1].split()[0]
+                            # titulo = card.find_element(
+                            #     'xpath', './/div[@class="title"]').text
+                            # preco_medio = card.find_elements(
+                            #     'xpath', './/div[@class="caption"]')[1].text.rstrip('.0').replace(',', '')
+                            # renda = card.find_elements(
+                            #     'xpath', './/div[@class="caption"]')[0].text.replace(',', '')
 
                             cod_film = name_semana + titulo + uf
 
@@ -269,17 +334,18 @@ def scraper_regiao(region_filter, semana_select):
         select_filter(driver, region, 'REGIAO')
 
     filename = f'output_{region}.csv'
-    arquivo_existe = os.path.isfile(filename)
     header = ['num_semana', 'name_semana', 'rank', 'titulo', 'publico',
               'sessoes', 'nacionalidade', 'regiao', 'uf', 'renda',
               'preco_medio']
 
+    if not os.path.exists(filename):
+        with open(filename, 'w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerow(header)
+
     with open(filename, 'a', newline='', encoding='utf-8') as file:
 
         writer = csv.writer(file)
-
-        if not arquivo_existe or os.stat(filename).st_size == 0:
-            writer.writerow(header)
 
         for line in list_films.values():
             linha = [str(value) for value in line]
