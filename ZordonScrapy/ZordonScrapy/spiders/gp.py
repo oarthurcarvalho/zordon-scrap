@@ -4,10 +4,10 @@ from datetime import datetime
 
 import scrapy
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from webdriver_manager.chrome import ChromeDriverManager
 
 DIA_COLETA = datetime.now().strftime('Dia %d/%m')
 DATA_COLETA = datetime.now().strftime('%d/%m/%Y')
@@ -32,9 +32,11 @@ class GpSpider(scrapy.Spider):
         if maior_data_arquivo == DATA_COLETA:
             return None
 
-        service = Service()
-        chrome_options = Options()
-        driver = webdriver.Chrome(options=chrome_options, service=service)
+        service = Service(
+            ChromeDriverManager(
+                version="114.0.5735.90").install())
+        options = webdriver.ChromeOptions()
+        driver = webdriver.Chrome(service=service, options=options)
         driver.get('https://globoplay.globo.com/categorias/top-10/')
 
         listas = driver.find_elements(By.CSS_SELECTOR, '.offer-slider')
@@ -82,7 +84,7 @@ class GpSpider(scrapy.Spider):
                             cookies_button[0].click()
 
                         next_button[0].click()
-                    except:
+                    except Exception:
                         pass
 
                     clicked += 1

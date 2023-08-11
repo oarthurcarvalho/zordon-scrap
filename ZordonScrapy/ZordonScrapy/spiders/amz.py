@@ -84,14 +84,18 @@ class AmzEbSpider(scrapy.Spider):
             ])
 
     def init_page(self, url):
-        service = Service()
-        chrome_options = Options()
-        chrome_options = webdriver.ChromeOptions()
+
         my_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
             (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
-        chrome_options.add_argument(f"user-agent={my_agent}")
-        driver = webdriver.Chrome(options=chrome_options, service=service)
-        driver.maximize_window()
+
+        options = webdriver.ChromeOptions()
+        options.add_argument(f"user-agent={my_agent}")
+
+        service = Service(ChromeDriverManager(
+            version="114.0.5735.90").install())
+
+        driver = webdriver.Chrome(options=options, service=service)
+
         driver.get(url=url)
         sleep(1)
         driver.refresh()
@@ -144,7 +148,8 @@ class AmzEbSpider(scrapy.Spider):
                 avaliacao = card.xpath(
                     './/div[@class="a-row"]/div/a/i/span//text()')
                 item["avaliacao"] = float(
-                    avaliacao[0].split()[0].replace(',', '.')) if avaliacao else None
+                    avaliacao[0].split()[0].replace(',', '.')) \
+                    if avaliacao else None
 
                 pontos -= 1
                 self.write_row(item)

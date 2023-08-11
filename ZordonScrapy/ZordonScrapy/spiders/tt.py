@@ -8,6 +8,7 @@ import scrapy
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 DATA_COLETA = (datetime.now() - timedelta(days=1)).strftime('%d-%m-%Y')
 print(DATA_COLETA)
@@ -54,7 +55,9 @@ class TtSpider(scrapy.Spider):
             return None
 
         # Inicialize o driver
-        service = Service()
+        service = Service(
+            ChromeDriverManager(
+                version="114.0.5735.90").install())
         options = webdriver.ChromeOptions()
         driver = webdriver.Chrome(service=service, options=options)
         driver.get('https://archive.twitter-trending.com/brazil/%s' %
