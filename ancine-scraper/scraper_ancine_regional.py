@@ -6,13 +6,14 @@ from time import sleep
 from selenium import webdriver
 from selenium.common.exceptions import (ElementClickInterceptedException,
                                         ElementNotInteractableException,
-                                        NoSuchElementException)
-from selenium.webdriver.chrome.options import Options
+                                        NoSuchElementException,
+                                        StaleElementReferenceException)
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from utils import abaixar_rolagem, select_filter
+from webdriver_manager.chrome import ChromeDriverManager
 
 
 def getNextWeek(driver, num_nextweek):
@@ -52,8 +53,13 @@ def verificar_mais_filmes(driver, num_movies, num_last_movie):
 
 
 def get_data(card, dash='publico'):
-
-    info = card.get_attribute('aria-label')
+    sleep(1)
+    while True:
+        try:
+            info = card.get_attribute('aria-label')
+            break
+        except StaleElementReferenceException as e:
+            continue
 
     # Extrair nome do filme
     padrao_filme = r"^(.*?)\. Público"
@@ -111,12 +117,12 @@ def get_data(card, dash='publico'):
 
 def scraper_regiao(region_filter, semana_select):
 
-    chrome_options = webdriver.ChromeOptions()
     # chrome_options.add_argument('--headless')
 
-    service = Service()
-    chrome_options = Options()
-    driver = webdriver.Chrome(options=chrome_options, service=service)
+    service = Service(ChromeDriverManager(
+        version="114.0.5735.90").install())
+    options = webdriver.ChromeOptions()
+    driver = webdriver.Chrome(service=service, options=options)
     driver.maximize_window()
 
     url_pbi = 'https://app.powerbi.com/view?r=eyJrIjoiM2ViZGRmMjctYjZlNC00NjI4LWFiZDEtMDAzZjk2OTU2OGYyIiwidCI6ImIwYThiNWFkLTU5MGQtNGZiYS1hZmY4LWUzMDc0YWI0MzVhNyJ9&pageName=ReportSectiona448b45fb6e3695eb8ba'
@@ -125,8 +131,6 @@ def scraper_regiao(region_filter, semana_select):
 
     wait.until(EC.visibility_of_all_elements_located(
         (By.CSS_SELECTOR, 'transform.bringToFront')))
-
-    sleep(10)
 
     # Limpar os filtros do dashboard
     driver.find_element('xpath',
@@ -171,14 +175,21 @@ def scraper_regiao(region_filter, semana_select):
                     num_semana = semana.find_element(
                         'xpath', './/span[@class="slicerText"]').text.split("\u2003")[0]
 
-                    card_filmes_exibidos = driver.find_elements(
-                        'tag name', 'tspan')
+                    while True:
+                        try:
+                            card_filmes_exibidos = driver.find_elements(
+                                'tag name', 'tspan')
 
-                    wait.until(EC.visibility_of_all_elements_located(
-                        (By.CSS_SELECTOR, 'transform.bringToFront')))
+                            wait.until(EC.visibility_of_all_elements_located(
+                                (By.CSS_SELECTOR, 'transform.bringToFront')))
 
-                    num_movies = int(
-                        card_filmes_exibidos[1].text) if card_filmes_exibidos[1].text != '(Blank)' else 0
+                            num_movies = int(
+                                card_filmes_exibidos[1].text) if card_filmes_exibidos[1].text != '(Blank)' else 0
+
+                            break
+                        except StaleElementReferenceException as e:
+                            continue
+
                     num_last_movie = 0
                     index = 0
                     while True:
@@ -228,7 +239,7 @@ def scraper_regiao(region_filter, semana_select):
                     wait.until(EC.visibility_of_all_elements_located(
                         (By.CSS_SELECTOR, 'transform.bringToFront')))
                 abaixar_rolagem(driver,
-                                './/div[@class="scroll-wrapper scrollbar-inner"][1]/div[3]/div/div[3]', -100)
+                                './/div[@class="scroll-wrapper scrollbar-inner"][1]/div[3]/div/div[3]', -200)
             select_filter(driver, uf, 'UF')
         select_filter(driver, region, 'REGIAO')
         sleep(1)
@@ -312,7 +323,8 @@ def scraper_regiao(region_filter, semana_select):
                                   titulo, renda, preco_medio, filter, region, uf)
 
                         num_last_movie = int(
-                            info[-1].split()[0]) if num_movies != 0 else 0
+                            info.split('. ')[-1].split()[0]) if num_movies != 0 else 0
+
                         num_movies = int(
                             info[-1].split()[2].replace('.', '')) if card_filmes_exibidos[1].text != '(Blank)' else 0
 

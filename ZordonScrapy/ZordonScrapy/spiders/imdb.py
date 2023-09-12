@@ -186,16 +186,13 @@ class ImdbSpider(scrapy.Spider):
 
     def get_imdb_codes(self):
         imdb_codes = []
-        csv_path = 'data/flixPatrol.csv'
+        csv_path = 'data/imdb_input.csv'
         try:
             with open(csv_path, 'r', newline='', encoding='utf-8') as csvfile:
-                reader = csv.DictReader(csvfile)
-
-                for row in reader:
-                    imdb_code = row.get('IMDB_cod')
-
-                    if imdb_code:
-                        imdb_codes.append(imdb_code)
+                leitor_csv = csv.reader(csvfile)
+                for linha in leitor_csv:
+                    if linha:
+                        imdb_codes.append(linha[0])
 
             return imdb_codes
         except FileNotFoundError as e:

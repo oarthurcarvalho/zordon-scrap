@@ -1,7 +1,7 @@
 import csv
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import scrapy
 
@@ -27,13 +27,77 @@ class FpSpider(scrapy.Spider):
     start_urls = ["https://flixpatrol.com/top10/streaming/brazil/"]
     path_file = os.path.join(DATA_DIR, 'flixPatrol.csv')
 
+    def start_requests(self):
+        while True:
+            print('O que deseja fazer?\n')
+            print('1 - Obter os dados de hoje')
+            print('2 - Digitar o periodo que deseja obter os dados')
+            print('3 - Sair')
+            print()
+            try:
+                opcao = input('Escolha a opção: ')
+                if opcao in ['1', '2', '3']:
+                    break
+                else:
+                    print('Opção Inválida. Tente novamente!')
+                    print()
+
+            except ValueError:
+                print('Opção Inválida. Tente novamente!')
+                print()
+
+        if opcao == '1':
+            data_coleta = datetime.now().strftime('%Y-%m-%d')
+            link = self.start_urls[0] + data_coleta
+            yield scrapy.Request(
+                url=link,
+                callback=self.parse,
+                meta=dict(item=data_coleta)
+            )
+
+        elif opcao == '2':
+            print()
+
+            while True:
+                try:
+                    data_inicio = input(
+                        'Digite a data de inicio (aaaa-mm-dd): ')
+                    datetime.strptime(data_inicio, '%Y-%m-%d')
+                    break
+                except ValueError:
+                    print('Valor inválido. Tente novamente!')
+                    print()
+
+            while True:
+                try:
+                    data_fim = input(
+                        'Digite a data de fim (aaaa-mm-dd): ')
+                    datetime.strptime(data_fim, '%Y-%m-%d')
+                    break
+                except Exception:
+                    print()
+
+            lista_datas = self.obter_datas_entre_intervalo(
+                data_inicio, data_fim)
+
+            for data_coleta in lista_datas:
+
+                link = self.start_urls[0] + data_coleta
+                yield scrapy.Request(
+                    url=link,
+                    callback=self.parse,
+                    meta=dict(item=data_coleta)
+                )
+        elif opcao == '3':
+            print()
+            print('Encerrando a spider...')
+            print()
+
     def parse(self, response):
 
         self.verifica_arquivo()
 
-        maior_data_arquivo = self.verificar_maior_data()
-        if maior_data_arquivo == DATA_COLETA:
-            return None
+        data_coleta = response.meta['item']
 
         cards = response.xpath('//div[@class="content mb-14"]')
 
@@ -56,8 +120,8 @@ class FpSpider(scrapy.Spider):
                 for titulo in lista:
 
                     item = {}
-                    item['Dia'] = DATA_COLETA
-                    item['Mês'] = name_month[DATA_COLETA.split('/')[1]]
+                    item['Dia'] = data_coleta
+                    item['Mês'] = name_month[data_coleta.split('-')[1]]
                     item['Título'] = titulo.xpath(
                         './/a[@class="hover:underline"]//text()').get()
                     item['Pontos'] = pontos
@@ -111,7 +175,7 @@ class FpSpider(scrapy.Spider):
     def verifica_arquivo(self):
         if not os.path.isfile(self.path_file):
             with open(self.path_file, mode='w', newline='',
-                      encoding='utf-8') as f:
+                      encoding='latin-1') as f:
                 writer = csv.writer(f)
                 writer.writerow(
                     [
@@ -146,3 +210,19 @@ class FpSpider(scrapy.Spider):
 
         return maior_data.strftime('%d/%m/%Y') \
             if maior_data is not None else None
+
+    def obter_datas_entre_intervalo(self, data_inicio, data_fim):
+        datas_entre_intervalo = []
+        delta = timedelta(days=1)  # Incremento de um dia
+
+        # Converte as strings de data para objetos datetime
+        data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d')
+        data_fim = datetime.strptime(data_fim, '%Y-%m-%d')
+
+        # Gera a lista de datas
+        data_atual = data_inicio
+        while data_atual <= data_fim:
+            datas_entre_intervalo.append(data_atual.strftime('%Y-%m-%d'))
+            data_atual += delta
+
+        return datas_entre_intervalo

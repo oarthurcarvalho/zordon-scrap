@@ -17,20 +17,27 @@ class ImdbKeySpider(scrapy.Spider):
     def start_requests(self):
         imdb_codes = self.get_imdb_codes()
 
+        my_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
+            (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+
+        options = webdriver.ChromeOptions()
+        options.add_argument(f"user-agent={my_agent}")
+
+        service = Service(ChromeDriverManager().install())
+
+        driver = webdriver.Chrome(options=options, service=service)
+
         for code in imdb_codes:
 
             url = f"https://www.imdb.com/title/{code}/keywords/"
             yield scrapy.Request(
-                url, callback=self.parse, meta={'imdb_code': code})
+                url,
+                callback=self.parse, meta={'imdb_code': code, 'driver': driver})
 
     def parse(self, response):
         code = response.meta['imdb_code']
 
-        options = webdriver.ChromeOptions()
-
-        service = Service(ChromeDriverManager(
-            version="114.0.5735.90").install())
-        driver = webdriver.Chrome(service=service, options=options)
+        driver = response.meta['driver']
 
         driver.get(response.url)
 
@@ -64,8 +71,6 @@ class ImdbKeySpider(scrapy.Spider):
             }
             dados_lista.append(dados)
 
-        driver.quit()
-
         self.escrever_arquivo(dados_lista)
 
     def escrever_arquivo(self, dados_lista):
@@ -84,16 +89,13 @@ class ImdbKeySpider(scrapy.Spider):
 
     def get_imdb_codes(self):
         imdb_codes = []
-        csv_path = 'data/flixPatrol.csv'
+        csv_path = 'data/imdb_input.csv'
         try:
             with open(csv_path, 'r', newline='', encoding='utf-8') as csvfile:
-                reader = csv.DictReader(csvfile)
-
-                for row in reader:
-                    imdb_code = row.get('IMDB_cod')
-
-                    if imdb_code:
-                        imdb_codes.append(imdb_code)
+                leitor_csv = csv.reader(csvfile)
+                for linha in leitor_csv:
+                    if linha:
+                        imdb_codes.append(linha[0])
 
             return imdb_codes
         except FileNotFoundError as e:

@@ -1,5 +1,3 @@
-from selenium import webdriver
-
 from scraper_ancine_regional import scraper_regiao
 
 centro_oeste = {

@@ -54,12 +54,15 @@ class TtSpider(scrapy.Spider):
         if flag_tempo and flag_volume:
             return None
 
-        # Inicialize o driver
-        service = Service(
-            ChromeDriverManager(
-                version="114.0.5735.90").install())
+        my_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
+            (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+
         options = webdriver.ChromeOptions()
-        driver = webdriver.Chrome(service=service, options=options)
+        options.add_argument(f"user-agent={my_agent}")
+
+        service = Service(ChromeDriverManager().install())
+
+        driver = webdriver.Chrome(options=options, service=service)
         driver.get('https://archive.twitter-trending.com/brazil/%s' %
                    (DATA_COLETA.replace('/', '-')))
 

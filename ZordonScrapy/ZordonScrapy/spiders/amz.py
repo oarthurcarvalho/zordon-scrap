@@ -91,8 +91,7 @@ class AmzEbSpider(scrapy.Spider):
         options = webdriver.ChromeOptions()
         options.add_argument(f"user-agent={my_agent}")
 
-        service = Service(ChromeDriverManager(
-            version="114.0.5735.90").install())
+        service = Service(ChromeDriverManager().install())
 
         driver = webdriver.Chrome(options=options, service=service)
 
