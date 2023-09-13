@@ -1,7 +1,14 @@
+from time import sleep
+
 import requests
 import scrapy
 from bs4 import BeautifulSoup
 from lxml import etree
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from webdriver_manager.chrome import ChromeDriverManager
 
 
 class FolhaSpSpider(scrapy.Spider):
@@ -12,32 +19,45 @@ class FolhaSpSpider(scrapy.Spider):
 
     def parse(self, response):
 
-        # user_agent = '--user-agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"'
+        my_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
+            (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
 
-        url = "https://www1.folha.uol.com.br/maispopulares/#educacao/mais-lidas"
+        options = webdriver.ChromeOptions()
+        options.add_argument(f"user-agent={my_agent}")
 
-        response = requests.get(url)
+        service = Service(ChromeDriverManager().install())
 
-        html = response.text
+        driver = webdriver.Chrome(options=options, service=service)
+        driver.get(
+            'https://www1.folha.uol.com.br/maispopulares/#educacao/mais-lidas')
 
-        # Crie um objeto BeautifulSoup
-        soup = BeautifulSoup(html, 'lxml')
+        sleep(10)
 
-        # Converta o objeto BeautifulSoup para um objeto ElementTree do lxml
-        element_tree = etree.HTML(str(soup))
+        page_content = driver.page_source
 
-        xpath_expression = '//li[@class="c-most-popular__item"]'
-        li_elements = element_tree.xpath(xpath_expression)
+        soup = BeautifulSoup(page_content, 'html.parser')
 
-        print()
-        print()
-        print()
-        print(len(li_elements))
-        print()
-        print()
-        print()
+        noticias = soup.find_all('li', attrs={'class': 'c-most-popular__item'})
 
-        # Itere sobre os elementos encontrados
-        for li_element in li_elements:
+        for index, noticia in enumerate(noticias):
 
-            print(li_element.text)
+            tag = noticia.find(
+                'a',
+                attrs={'class': 'c-kicker c-most-popular__kicker'})
+
+            if tag is None:
+                tag = noticia.find(
+                    'span',
+                    attrs={'class': 'c-kicker c-most-popular__kicker'})
+
+            div = noticia.find('div', 'c-most-popular__content')
+            manchete = div.find('a')
+
+            print(f'{index} - {tag.text.strip()} - {manchete.text}')
+        #     test = noticia.find_elements(
+        #         'xpath',
+        #         '//a[@class="c-kicker c-most-popular__kicker"]')
+
+        #     print()
+        #     print(test.text)
+        #     print()
